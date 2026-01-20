@@ -17,11 +17,17 @@ public class Database {
     }
 
     public Connection connect() throws SQLException {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalStateException("SQLite JDBC driver not found", ex);
+        }
         return DriverManager.getConnection(jdbcUrl);
     }
 
     public void initialize() {
         try (Connection connection = connect(); Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
             statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

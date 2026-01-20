@@ -134,12 +134,24 @@ public class ToDoApp {
     }
 
     private static void printProfileSummary(User user, TaskStats stats) {
+        boolean hasDetails = false;
+        if (user.displayName() != null
+            && !user.displayName().isBlank()
+            && !user.displayName().equalsIgnoreCase(user.name())) {
+            System.out.printf("Display name: %s%n", user.displayName());
+            hasDetails = true;
+        }
         if (user.focusArea() != null && !user.focusArea().isBlank()) {
             System.out.printf("Focus: %s%n", user.focusArea());
+            hasDetails = true;
         }
         if (user.dailyGoal() != null && user.dailyGoal() > 0) {
             int remaining = Math.max(0, user.dailyGoal() - stats.completed());
             System.out.printf("Daily goal: %d completed, %d to go%n", stats.completed(), remaining);
+            hasDetails = true;
+        }
+        if (!hasDetails) {
+            System.out.println("Tip: update your profile to personalize your daily plan.");
         }
     }
 
