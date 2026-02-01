@@ -11,14 +11,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.util.List;
-import java.util.function.BiConsumer;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-
 import java.util.List;
 import java.util.function.BiConsumer;
-
 
 
 public class TaskColumnPanel extends JPanel {
@@ -56,7 +52,6 @@ public class TaskColumnPanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
 
         cardContainer.setTransferHandler(new ColumnDropHandler());
-
         cardContainer.addPropertyChangeListener("dropLocation", event -> {
             if (event.getNewValue() == null) {
                 setHighlighted(false);
@@ -97,7 +92,9 @@ public class TaskColumnPanel extends JPanel {
     private final class ColumnDropHandler extends TransferHandler {
         @Override
         public boolean canImport(TransferSupport support) {
-            return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            boolean supported = support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            setHighlighted(supported);
+            return supported;
         }
 
         @Override
@@ -116,50 +113,6 @@ public class TaskColumnPanel extends JPanel {
             } finally {
                 setHighlighted(false);
             }
-        }
-    }
-
-    private final class ColumnDropTargetListener extends DropTargetAdapter {
-        @Override
-        public void dragEnter(DropTargetDragEvent dtde) {
-            updateHighlight(dtde);
-        }
-
-        @Override
-        public void dragOver(DropTargetDragEvent dtde) {
-            updateHighlight(dtde);
-        }
-
-        @Override
-        public void dragExit(DropTargetEvent dte) {
-            setHighlighted(false);
-        }
-
-        @Override
-        public void drop(DropTargetDropEvent dtde) {
-            TransferHandler handler = cardContainer.getTransferHandler();
-            TransferSupport support = new TransferSupport(cardContainer, dtde);
-            if (!handler.canImport(support)) {
-                dtde.rejectDrop();
-                setHighlighted(false);
-                return;
-            }
-            dtde.acceptDrop(DnDConstants.ACTION_MOVE);
-            boolean success = handler.importData(support);
-            dtde.dropComplete(success);
-            setHighlighted(false);
-        }
-
-        private void updateHighlight(DropTargetDragEvent dtde) {
-            TransferHandler handler = cardContainer.getTransferHandler();
-            TransferSupport support = new TransferSupport(cardContainer, dtde);
-            boolean supported = handler.canImport(support);
-            if (supported) {
-                dtde.acceptDrag(DnDConstants.ACTION_MOVE);
-            } else {
-                dtde.rejectDrag();
-            }
-            setHighlighted(supported);
         }
     }
 }
