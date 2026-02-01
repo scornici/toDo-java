@@ -399,11 +399,12 @@ public class ToDoApp {
             titleLabel.setText(task.title());
             metaLabel.setText("Due " + dueDate + notes);
 
-            if (task.completed()) {
-                statusLabel.setText("Completed");
+            TaskStatus status = task.status();
+            if (status.isCompleted()) {
+                statusLabel.setText(status.label());
                 statusLabel.setForeground(new Color(70, 166, 128));
             } else {
-                statusLabel.setText("In progress");
+                statusLabel.setText(status.label());
                 statusLabel.setForeground(new Color(199, 134, 52));
             }
 
