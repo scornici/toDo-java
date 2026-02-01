@@ -9,6 +9,7 @@ public record Task(
         String createdAt,
         TaskStatus status
 ) {
+
     public String completionLabel() {
         return completed ? "✓" : " ";
     }

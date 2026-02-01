@@ -311,6 +311,7 @@ public class ToDoApp {
         }
     }
 
+
     private record TaskForm(JTextField titleField, JTextArea notesField, JTextField dueDateField) {
         private static TaskForm empty() {
             JTextField titleField = new JTextField();
