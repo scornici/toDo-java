@@ -110,7 +110,7 @@ public class ToDoRepository {
         List<Task> tasks = new ArrayList<>();
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "SELECT id, title, notes, due_date, completed, created_at FROM tasks WHERE user_id = ? ORDER BY completed, due_date, created_at"
+                 "SELECT id, title, notes, due_date, completed, status, created_at FROM tasks WHERE user_id = ? ORDER BY completed, due_date, created_at"
              )) {
             statement.setInt(1, userId);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -121,7 +121,8 @@ public class ToDoRepository {
                         resultSet.getString("notes"),
                         resultSet.getString("due_date"),
                         resultSet.getInt("completed") == 1,
-                        resultSet.getString("created_at")
+                        resultSet.getString("created_at"),
+                        TaskStatus.fromDatabase(resultSet.getString("status"))
                     ));
                 }
             }
@@ -134,12 +135,13 @@ public class ToDoRepository {
     public void addTask(int userId, String title, String notes, String dueDate) {
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "INSERT INTO tasks(user_id, title, notes, due_date) VALUES (?, ?, ?, ?)"
+                 "INSERT INTO tasks(user_id, title, notes, due_date, status) VALUES (?, ?, ?, ?, ?)"
              )) {
             statement.setInt(1, userId);
             statement.setString(2, title);
             statement.setString(3, notes == null || notes.isBlank() ? null : notes);
             statement.setString(4, dueDate == null || dueDate.isBlank() ? null : dueDate);
+            statement.setString(5, TaskStatus.TODO.name());
             statement.executeUpdate();
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to add task", ex);
@@ -157,11 +159,12 @@ public class ToDoRepository {
     private boolean updateTaskCompletion(int userId, int taskId, boolean completed) {
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "UPDATE tasks SET completed = ? WHERE id = ? AND user_id = ?"
+                 "UPDATE tasks SET completed = ?, status = ? WHERE id = ? AND user_id = ?"
              )) {
             statement.setInt(1, completed ? 1 : 0);
-            statement.setInt(2, taskId);
-            statement.setInt(3, userId);
+            statement.setString(2, completed ? TaskStatus.DONE.name() : TaskStatus.TODO.name());
+            statement.setInt(3, taskId);
+            statement.setInt(4, userId);
             return statement.executeUpdate() > 0;
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to update task", ex);

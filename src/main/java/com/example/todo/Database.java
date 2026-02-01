@@ -39,11 +39,13 @@ public class Database {
                     notes TEXT,
                     due_date TEXT,
                     completed INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'TODO',
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )
                 """);
             ensureUserColumns(connection);
+            ensureTaskColumns(connection);
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to initialize database", ex);
         }
@@ -67,6 +69,21 @@ public class Database {
         if (!columns.contains(column)) {
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("ALTER TABLE users ADD COLUMN " + column + " " + type);
+            }
+        }
+    }
+
+    private void ensureTaskColumns(Connection connection) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(tasks)");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                columns.add(resultSet.getString("name"));
+            }
+        }
+        if (!columns.contains("status")) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'TODO'");
             }
         }
     }
