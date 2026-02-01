@@ -13,6 +13,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class TaskCard extends JPanel {
@@ -63,8 +64,7 @@ public class TaskCard extends JPanel {
                 handler.exportAsDrag(TaskCard.this, event, TransferHandler.MOVE);
             }
         };
-        addMouseListener(dragHandler);
-        addMouseMotionListener(dragHandler);
+        installDragHandler(dragHandler, List.of(this, header, titleLabel, statusLabel, metaLabel));
     }
 
     public Task task() {
@@ -81,6 +81,13 @@ public class TaskCard extends JPanel {
         String dueDate = task.dueDate() == null || task.dueDate().isBlank() ? "No due date" : task.dueDate();
         String notes = task.notes() == null || task.notes().isBlank() ? "" : " · " + task.notes();
         return "Due " + dueDate + notes;
+    }
+
+    private void installDragHandler(MouseAdapter handler, List<JComponent> components) {
+        for (JComponent component : components) {
+            component.addMouseListener(handler);
+            component.addMouseMotionListener(handler);
+        }
     }
 
     private static final class TaskCardTransferHandler extends TransferHandler {
