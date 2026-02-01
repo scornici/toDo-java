@@ -3,6 +3,7 @@ package com.example.todo;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
 
 public class ToDoApp {
     private static final String JDBC_URL = "jdbc:sqlite:todo.db";
@@ -130,6 +131,9 @@ public class ToDoApp {
             deleteTask.setForeground(new Color(200, 72, 72));
             deleteTask.addActionListener(event -> deleteTask());
 
+            JButton syncTasks = ghostButton("Sync Tasks");
+            syncTasks.addActionListener(event -> syncTasks());
+
             JButton updateProfile = ghostButton("Update Profile");
             updateProfile.addActionListener(event -> updateProfile());
             JButton switchUser = ghostButton("Switch User");
@@ -143,6 +147,8 @@ public class ToDoApp {
             actions.add(Box.createVerticalStrut(8));
             actions.add(deleteTask);
             actions.add(Box.createVerticalStrut(24));
+            actions.add(syncTasks);
+            actions.add(Box.createVerticalStrut(8));
             actions.add(updateProfile);
             actions.add(Box.createVerticalStrut(8));
             actions.add(switchUser);
@@ -307,6 +313,17 @@ public class ToDoApp {
             if (user != null) {
                 activeUser = user;
                 refresh();
+            }
+        }
+
+        private void syncTasks() {
+            List<Task> tasks = repository.fetchTasks(activeUser.id());
+            TaskSyncClient client = new TaskSyncClient("localhost", TaskSyncClient.DEFAULT_PORT);
+            try {
+                client.syncTasks(tasks);
+                JOptionPane.showMessageDialog(frame, "Sync completed successfully", "Sync", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "Sync failed: " + ex.getMessage(), "Sync Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }

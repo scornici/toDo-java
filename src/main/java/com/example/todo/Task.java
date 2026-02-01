@@ -1,5 +1,8 @@
 package com.example.todo;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 public record Task(
         int id,
         String title,
@@ -8,7 +11,10 @@ public record Task(
         boolean completed,
         String createdAt,
         TaskStatus status
-) {
+) implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public String completionLabel() {
         return completed ? "✓" : " ";
