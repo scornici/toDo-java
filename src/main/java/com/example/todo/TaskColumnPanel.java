@@ -58,6 +58,7 @@ public class TaskColumnPanel extends JPanel {
             @Override
             public void dragEnter(DropTargetDragEvent dtde) {
                 setHighlighted(true);
+
             }
 
             @Override
