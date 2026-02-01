@@ -83,4 +83,19 @@ public class Database {
             }
         }
     }
+
+    private void ensureTaskColumns(Connection connection) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(tasks)");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                columns.add(resultSet.getString("name"));
+            }
+        }
+        if (!columns.contains("status")) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'TODO'");
+            }
+        }
+    }
 }
