@@ -3,6 +3,11 @@ package com.example.todo;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 public class ToDoApp {
     private static final String JDBC_URL = "jdbc:sqlite:todo.db";
@@ -130,6 +135,11 @@ public class ToDoApp {
             deleteTask.setForeground(new Color(200, 72, 72));
             deleteTask.addActionListener(event -> deleteTask());
 
+            JButton syncTasks = ghostButton("Sync Tasks");
+            syncTasks.addActionListener(event -> syncTasks());
+            JButton downloadReport = ghostButton("Download Report (CSV)");
+            downloadReport.addActionListener(event -> downloadReport());
+
             JButton updateProfile = ghostButton("Update Profile");
             updateProfile.addActionListener(event -> updateProfile());
             JButton switchUser = ghostButton("Switch User");
@@ -143,6 +153,10 @@ public class ToDoApp {
             actions.add(Box.createVerticalStrut(8));
             actions.add(deleteTask);
             actions.add(Box.createVerticalStrut(24));
+            actions.add(syncTasks);
+            actions.add(Box.createVerticalStrut(8));
+            actions.add(downloadReport);
+            actions.add(Box.createVerticalStrut(8));
             actions.add(updateProfile);
             actions.add(Box.createVerticalStrut(8));
             actions.add(switchUser);
@@ -308,6 +322,75 @@ public class ToDoApp {
                 activeUser = user;
                 refresh();
             }
+        }
+
+        private void syncTasks() {
+            List<Task> tasks = repository.fetchTasks(activeUser.id());
+            TaskSyncClient client = new TaskSyncClient("localhost", TaskSyncClient.DEFAULT_PORT);
+            try {
+                client.syncTasks(tasks);
+                JOptionPane.showMessageDialog(frame, "Sync completed successfully", "Sync", JOptionPane.INFORMATION_MESSAGE);
+            } catch (java.net.ConnectException ex) {
+                showServerUnavailableMessage();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "Sync failed: " + ex.getMessage(), "Sync Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        private void downloadReport() {
+            TaskSyncClient client = new TaskSyncClient("localhost", TaskSyncClient.DEFAULT_PORT);
+            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    String csv = client.downloadReportCsv();
+                    saveCsvReport(csv);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                    } catch (java.util.concurrent.ExecutionException ex) {
+                        Throwable cause = ex.getCause();
+                        if (cause instanceof java.net.ConnectException) {
+                            showServerUnavailableMessage();
+                            return;
+                        }
+                        if (cause instanceof IOException) {
+                            JOptionPane.showMessageDialog(frame, "Download failed: " + cause.getMessage(), "Report Error", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        JOptionPane.showMessageDialog(frame, "Download failed: " + ex.getMessage(), "Report Error", JOptionPane.ERROR_MESSAGE);
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        JOptionPane.showMessageDialog(frame, "Download interrupted.", "Report Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            };
+            worker.execute();
+        }
+
+        private void saveCsvReport(String csv) throws IOException {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Save Report");
+            chooser.setSelectedFile(new java.io.File("task_report.csv"));
+            int result = chooser.showSaveDialog(frame);
+            if (result != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            Path path = chooser.getSelectedFile().toPath();
+            Files.writeString(path, csv, StandardCharsets.UTF_8);
+            JOptionPane.showMessageDialog(frame, "Report saved to:\n" + path, "Report Saved", JOptionPane.INFORMATION_MESSAGE);
+        }
+
+        private void showServerUnavailableMessage() {
+            JOptionPane.showMessageDialog(
+                frame,
+                "Server not running. Start TaskSyncServer first.",
+                "Sync Error",
+                JOptionPane.ERROR_MESSAGE
+            );
         }
     }
 
