@@ -13,13 +13,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetEvent;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.awt.dnd.DropTargetDropEvent;
 
 
 public class TaskColumnPanel extends JPanel {
@@ -57,22 +52,9 @@ public class TaskColumnPanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
 
         cardContainer.setTransferHandler(new ColumnDropHandler());
-        new DropTarget(cardContainer, new DropTargetAdapter() {
-            @Override
-            public void dragEnter(DropTargetDragEvent dtde) {
-                setHighlighted(true);
-            }
-
-            @Override
-            public void dragExit(DropTargetEvent dte) {
+        cardContainer.addPropertyChangeListener("dropLocation", event -> {
+            if (event.getNewValue() == null) {
                 setHighlighted(false);
-            }
-
-            @Override
-            public void drop(DropTargetDropEvent dtde) {
-                setHighlighted(false);
-                dtde.rejectDrop();
-                // drop-ul real e tratat de TransferHandler (ColumnDropHandler)
             }
         });
 
