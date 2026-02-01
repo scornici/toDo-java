@@ -322,6 +322,14 @@ public class ToDoApp {
             try {
                 client.syncTasks(tasks);
                 JOptionPane.showMessageDialog(frame, "Sync completed successfully", "Sync", JOptionPane.INFORMATION_MESSAGE);
+            } catch (java.net.ConnectException ex) {
+                JOptionPane.showMessageDialog(
+                    frame,
+                    "Sync failed: could not connect to the sync server.\n" +
+                        "Start TaskSyncServer on port " + TaskSyncClient.DEFAULT_PORT + " and try again.",
+                    "Sync Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frame, "Sync failed: " + ex.getMessage(), "Sync Error", JOptionPane.ERROR_MESSAGE);
             }
