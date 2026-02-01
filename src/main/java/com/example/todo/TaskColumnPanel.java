@@ -19,6 +19,8 @@ import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetEvent;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.awt.dnd.DropTargetDropEvent;
+
 
 public class TaskColumnPanel extends JPanel {
     private static final Color COLUMN_BORDER = new Color(220, 223, 232);
@@ -59,14 +61,21 @@ public class TaskColumnPanel extends JPanel {
             @Override
             public void dragEnter(DropTargetDragEvent dtde) {
                 setHighlighted(true);
-
             }
 
             @Override
             public void dragExit(DropTargetEvent dte) {
                 setHighlighted(false);
             }
+
+            @Override
+            public void drop(DropTargetDropEvent dtde) {
+                setHighlighted(false);
+                dtde.rejectDrop();
+                // drop-ul real e tratat de TransferHandler (ColumnDropHandler)
+            }
         });
+
     }
 
     public TaskStatus status() {
