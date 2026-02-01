@@ -1,44 +1,32 @@
 package com.example.todo;
 
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.ListCellRenderer;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.util.List;
 
 public class ToDoApp {
     private static final String JDBC_URL = "jdbc:sqlite:todo.db";
-    private static final Color BACKGROUND = new Color(245, 246, 250);
-    private static final Color PANEL = new Color(255, 255, 255);
-    private static final Color ACCENT = new Color(92, 103, 242);
-    private static final Color TEXT_PRIMARY = new Color(38, 40, 55);
-    private static final Color TEXT_SECONDARY = new Color(108, 112, 132);
+    static final Color BACKGROUND = new Color(245, 246, 250);
+    static final Color PANEL = new Color(255, 255, 255);
+    static final Color ACCENT = new Color(92, 103, 242);
+    static final Color TEXT_PRIMARY = new Color(38, 40, 55);
+    static final Color TEXT_SECONDARY = new Color(108, 112, 132);
 
     public static void main(String[] args) {
         Database database = new Database(JDBC_URL);
@@ -72,8 +60,7 @@ public class ToDoApp {
         private final JLabel statsLabel;
         private final JLabel focusLabel;
         private final JLabel goalLabel;
-        private final DefaultListModel<Task> taskListModel;
-        private final JList<Task> taskList;
+        private final TaskBoardPanel taskBoard;
         private User activeUser;
 
         private ToDoWindow(ToDoRepository repository) {
@@ -104,18 +91,11 @@ public class ToDoApp {
             subHeader.add(goalLabel);
             header.add(subHeader, BorderLayout.SOUTH);
 
-            taskListModel = new DefaultListModel<>();
-            taskList = new JList<>(taskListModel);
-            taskList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            taskList.setCellRenderer(new TaskCellRenderer());
-
-            JScrollPane scrollPane = new JScrollPane(taskList);
-            scrollPane.setBorder(BorderFactory.createEmptyBorder());
-
             JPanel listCard = new JPanel(new BorderLayout());
             listCard.setBackground(PANEL);
             listCard.setBorder(new EmptyBorder(24, 24, 24, 24));
-            listCard.add(scrollPane, BorderLayout.CENTER);
+            taskBoard = new TaskBoardPanel(repository, this::refresh);
+            listCard.add(taskBoard, BorderLayout.CENTER);
 
             JPanel actions = createActions();
             content.add(listCard, BorderLayout.CENTER);
@@ -274,11 +254,7 @@ public class ToDoApp {
                 goalLabel.setText("Set a daily goal to keep momentum");
             }
 
-            taskListModel.clear();
-            List<Task> tasks = repository.fetchTasks(activeUser.id());
-            for (Task task : tasks) {
-                taskListModel.addElement(task);
-            }
+            taskBoard.refresh(activeUser.id());
         }
 
         private void addTask() {
@@ -295,14 +271,13 @@ public class ToDoApp {
         }
 
         private void updateCompletion(boolean completed) {
-            Task selected = taskList.getSelectedValue();
+            Task selected = taskBoard.getSelectedTask();
             if (selected == null) {
                 JOptionPane.showMessageDialog(frame, "Select a task first.", "No task selected", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
-            boolean updated = completed
-                ? repository.markComplete(activeUser.id(), selected.id())
-                : repository.markIncomplete(activeUser.id(), selected.id());
+            TaskStatus status = completed ? TaskStatus.DONE : TaskStatus.TODO;
+            boolean updated = repository.updateTaskStatus(activeUser.id(), selected.id(), status);
             if (updated) {
                 refresh();
             } else {
@@ -311,7 +286,7 @@ public class ToDoApp {
         }
 
         private void deleteTask() {
-            Task selected = taskList.getSelectedValue();
+            Task selected = taskBoard.getSelectedTask();
             if (selected == null) {
                 JOptionPane.showMessageDialog(frame, "Select a task first.", "No task selected", JOptionPane.INFORMATION_MESSAGE);
                 return;
@@ -349,70 +324,6 @@ public class ToDoApp {
                 activeUser = user;
                 refresh();
             }
-        }
-    }
-
-    private static final class TaskCellRenderer extends JPanel implements ListCellRenderer<Task> {
-        private final JLabel titleLabel;
-        private final JLabel metaLabel;
-        private final JLabel statusLabel;
-
-        private TaskCellRenderer() {
-            setLayout(new BorderLayout(12, 6));
-            setBorder(new EmptyBorder(12, 12, 12, 12));
-            setBackground(PANEL);
-
-            titleLabel = new JLabel();
-            titleLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
-            titleLabel.setForeground(TEXT_PRIMARY);
-
-            metaLabel = new JLabel();
-            metaLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            metaLabel.setForeground(TEXT_SECONDARY);
-
-            statusLabel = new JLabel();
-            statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-            statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-
-            JPanel textPanel = new JPanel(new GridBagLayout());
-            textPanel.setOpaque(false);
-            GridBagConstraints constraints = new GridBagConstraints();
-            constraints.gridx = 0;
-            constraints.gridy = 0;
-            constraints.anchor = GridBagConstraints.WEST;
-            constraints.insets = new Insets(0, 0, 4, 0);
-            textPanel.add(titleLabel, constraints);
-
-            constraints.gridy = 1;
-            constraints.insets = new Insets(0, 0, 0, 0);
-            textPanel.add(metaLabel, constraints);
-
-            add(textPanel, BorderLayout.CENTER);
-            add(statusLabel, BorderLayout.EAST);
-        }
-
-        @Override
-        public Component getListCellRendererComponent(JList<? extends Task> list, Task task, int index,
-                                                      boolean isSelected, boolean cellHasFocus) {
-            String dueDate = task.dueDate() == null || task.dueDate().isBlank() ? "No due date" : task.dueDate();
-            String notes = task.notes() == null || task.notes().isBlank() ? "" : " · " + task.notes();
-            titleLabel.setText(task.title());
-            metaLabel.setText("Due " + dueDate + notes);
-
-            if (task.completed()) {
-                statusLabel.setText("Completed");
-                statusLabel.setForeground(new Color(70, 166, 128));
-            } else {
-                statusLabel.setText("In progress");
-                statusLabel.setForeground(new Color(199, 134, 52));
-            }
-
-            if (isSelected) {
-                setBackground(new Color(234, 236, 244));
-            } else {
-                setBackground(PANEL);
-            }
-            return this;
         }
     }
 

@@ -110,7 +110,7 @@ public class ToDoRepository {
         List<Task> tasks = new ArrayList<>();
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "SELECT id, title, notes, due_date, completed, created_at FROM tasks WHERE user_id = ? ORDER BY completed, due_date, created_at"
+                 "SELECT id, title, notes, due_date, completed, created_at, status FROM tasks WHERE user_id = ? ORDER BY completed, due_date, created_at"
              )) {
             statement.setInt(1, userId);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -121,7 +121,8 @@ public class ToDoRepository {
                         resultSet.getString("notes"),
                         resultSet.getString("due_date"),
                         resultSet.getInt("completed") == 1,
-                        resultSet.getString("created_at")
+                        resultSet.getString("created_at"),
+                        TaskStatus.fromDatabase(resultSet.getString("status"))
                     ));
                 }
             }
@@ -131,15 +132,44 @@ public class ToDoRepository {
         return tasks;
     }
 
+    public List<Task> fetchTasksByStatus(int userId, TaskStatus status) {
+        List<Task> tasks = new ArrayList<>();
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement(
+                 "SELECT id, title, notes, due_date, completed, created_at, status FROM tasks WHERE user_id = ? AND status = ? ORDER BY due_date, created_at"
+             )) {
+            statement.setInt(1, userId);
+            statement.setString(2, status.name());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    tasks.add(new Task(
+                        resultSet.getInt("id"),
+                        resultSet.getString("title"),
+                        resultSet.getString("notes"),
+                        resultSet.getString("due_date"),
+                        resultSet.getInt("completed") == 1,
+                        resultSet.getString("created_at"),
+                        TaskStatus.fromDatabase(resultSet.getString("status"))
+                    ));
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch tasks by status", ex);
+        }
+        return tasks;
+    }
+
     public void addTask(int userId, String title, String notes, String dueDate) {
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "INSERT INTO tasks(user_id, title, notes, due_date) VALUES (?, ?, ?, ?)"
+                 "INSERT INTO tasks(user_id, title, notes, due_date, completed, status) VALUES (?, ?, ?, ?, ?, ?)"
              )) {
             statement.setInt(1, userId);
             statement.setString(2, title);
             statement.setString(3, notes == null || notes.isBlank() ? null : notes);
             statement.setString(4, dueDate == null || dueDate.isBlank() ? null : dueDate);
+            statement.setInt(5, 0);
+            statement.setString(6, TaskStatus.TODO.name());
             statement.executeUpdate();
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to add task", ex);
@@ -147,24 +177,25 @@ public class ToDoRepository {
     }
 
     public boolean markComplete(int userId, int taskId) {
-        return updateTaskCompletion(userId, taskId, true);
+        return updateTaskStatus(userId, taskId, TaskStatus.DONE);
     }
 
     public boolean markIncomplete(int userId, int taskId) {
-        return updateTaskCompletion(userId, taskId, false);
+        return updateTaskStatus(userId, taskId, TaskStatus.TODO);
     }
 
-    private boolean updateTaskCompletion(int userId, int taskId, boolean completed) {
+    public boolean updateTaskStatus(int userId, int taskId, TaskStatus status) {
         try (Connection connection = database.connect();
              PreparedStatement statement = connection.prepareStatement(
-                 "UPDATE tasks SET completed = ? WHERE id = ? AND user_id = ?"
+                 "UPDATE tasks SET status = ?, completed = ? WHERE id = ? AND user_id = ?"
              )) {
-            statement.setInt(1, completed ? 1 : 0);
-            statement.setInt(2, taskId);
-            statement.setInt(3, userId);
+            statement.setString(1, status.name());
+            statement.setInt(2, status == TaskStatus.DONE ? 1 : 0);
+            statement.setInt(3, taskId);
+            statement.setInt(4, userId);
             return statement.executeUpdate() > 0;
         } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to update task", ex);
+            throw new IllegalStateException("Failed to update task status", ex);
         }
     }
 

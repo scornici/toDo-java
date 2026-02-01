@@ -39,11 +39,13 @@ public class Database {
                     notes TEXT,
                     due_date TEXT,
                     completed INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'TODO',
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )
                 """);
             ensureUserColumns(connection);
+            ensureTaskColumns(connection);
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to initialize database", ex);
         }
@@ -57,16 +59,27 @@ public class Database {
                 columns.add(resultSet.getString("name"));
             }
         }
-        addColumnIfMissing(connection, columns, "display_name", "TEXT");
-        addColumnIfMissing(connection, columns, "focus_area", "TEXT");
-        addColumnIfMissing(connection, columns, "daily_goal", "INTEGER");
+        addColumnIfMissing(connection, "users", columns, "display_name", "TEXT");
+        addColumnIfMissing(connection, "users", columns, "focus_area", "TEXT");
+        addColumnIfMissing(connection, "users", columns, "daily_goal", "INTEGER");
     }
 
-    private void addColumnIfMissing(Connection connection, Set<String> columns, String column, String type)
+    private void ensureTaskColumns(Connection connection) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(tasks)");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                columns.add(resultSet.getString("name"));
+            }
+        }
+        addColumnIfMissing(connection, "tasks", columns, "status", "TEXT NOT NULL DEFAULT 'TODO'");
+    }
+
+    private void addColumnIfMissing(Connection connection, String tableName, Set<String> columns, String column, String type)
         throws SQLException {
         if (!columns.contains(column)) {
             try (Statement statement = connection.createStatement()) {
-                statement.executeUpdate("ALTER TABLE users ADD COLUMN " + column + " " + type);
+                statement.executeUpdate("ALTER TABLE " + tableName + " ADD COLUMN " + column + " " + type);
             }
         }
     }
