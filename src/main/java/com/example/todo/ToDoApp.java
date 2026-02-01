@@ -153,7 +153,7 @@ public class ToDoApp {
 
         private JButton primaryButton(String label) {
             JButton button = new JButton(label);
-            styleButton(button, ACCENT, Color.WHITE);
+            styleButton(button, ACCENT, Color.BLACK);
             return button;
         }
 
